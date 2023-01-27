@@ -87,6 +87,8 @@ class FiducialsNode {
     tf2_ros::TransformBroadcaster broadcaster;
     tf2_ros::StaticTransformBroadcaster static_broadcaster;
     bool use_static_tf_broadcaster;
+    double minimum_time_between_detections_in_seconds;
+    ros::Time last_detection_time;
 
     ros::ServiceServer service_enable_detections;
 
@@ -334,7 +336,7 @@ void FiducialsNode::camInfoCallback(const sensor_msgs::CameraInfo::ConstPtr& msg
 
 void FiducialsNode::imageCallback(const sensor_msgs::ImageConstPtr & msg)
 {
-    if (enable_detections == false) {
+    if (enable_detections == false || (minimum_time_between_detections_in_seconds > 0.0 && (msg->header.stamp - last_detection_time).toSec() < minimum_time_between_detections_in_seconds)) {
         return; //return without doing anything
     }
 
@@ -383,6 +385,7 @@ void FiducialsNode::imageCallback(const sensor_msgs::ImageConstPtr & msg)
 
         if(ids.size() > 0) {
             aruco::drawDetectedMarkers(cv_ptr->image, corners, ids);
+            last_detection_time = msg->header.stamp;
         }
 
         if (publish_images) {
@@ -623,6 +626,7 @@ FiducialsNode::FiducialsNode() : nh(), pnh("~"), it(nh)
     pnh.param<bool>("do_pose_estimation", doPoseEstimation, true);
     pnh.param<bool>("publish_fiducial_tf", publishFiducialTf, true);
     pnh.param<bool>("use_static_tf_broadcaster", use_static_tf_broadcaster, false);
+    pnh.param<double>("minimum_time_between_detections_in_seconds", minimum_time_between_detections_in_seconds, 0.0);
     pnh.param<bool>("vis_msgs", vis_msgs, false);
     pnh.param<bool>("verbose", verbose, false);
 
