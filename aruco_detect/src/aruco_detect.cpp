@@ -39,6 +39,7 @@
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <visualization_msgs/Marker.h>
@@ -84,6 +85,8 @@ class FiducialsNode {
     image_transport::ImageTransport it;
     image_transport::Subscriber img_sub;
     tf2_ros::TransformBroadcaster broadcaster;
+    tf2_ros::StaticTransformBroadcaster static_broadcaster;
+    bool use_static_tf_broadcaster;
 
     ros::ServiceServer service_enable_detections;
 
@@ -511,7 +514,11 @@ void FiducialsNode::poseEstimateCallback(const FiducialArrayConstPtr & msg)
                         ts.header.frame_id = frameId;
                         ts.header.stamp = msg->header.stamp;
                         ts.child_frame_id = "fiducial_" + std::to_string(ids[i]);
-                        broadcaster.sendTransform(ts);
+
+                        if (use_static_tf_broadcaster)
+                            static_broadcaster.sendTransform(ts);
+                        else
+                            broadcaster.sendTransform(ts);
                     }
                     else {
                         geometry_msgs::TransformStamped ts;
@@ -519,7 +526,11 @@ void FiducialsNode::poseEstimateCallback(const FiducialArrayConstPtr & msg)
                         ts.header.frame_id = frameId;
                         ts.header.stamp = msg->header.stamp;
                         ts.child_frame_id = "fiducial_" + std::to_string(ft.fiducial_id);
-                        broadcaster.sendTransform(ts);
+
+                        if (use_static_tf_broadcaster)
+                            static_broadcaster.sendTransform(ts);
+                        else
+                            broadcaster.sendTransform(ts);
                     }
                 }
             }
@@ -611,6 +622,7 @@ FiducialsNode::FiducialsNode() : nh(), pnh("~"), it(nh)
     pnh.param<int>("dictionary", dicno, 7);
     pnh.param<bool>("do_pose_estimation", doPoseEstimation, true);
     pnh.param<bool>("publish_fiducial_tf", publishFiducialTf, true);
+    pnh.param<bool>("use_static_tf_broadcaster", use_static_tf_broadcaster, false);
     pnh.param<bool>("vis_msgs", vis_msgs, false);
     pnh.param<bool>("verbose", verbose, false);
 
